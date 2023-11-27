@@ -1,0 +1,68 @@
+from flask import Flask, request, jsonify
+import pandas as pd
+from os import write
+import numpy as np
+import csv
+from scipy import stats
+import os
+
+app = Flask(__name__)
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'csv'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/clean', methods=['POST'])
+def clean_csv():
+    try:
+        if 'input_file' not in request.files or 'output_file' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No file part'})
+
+        input_file = request.files['input_file']
+        output_file = request.files['output_file']
+
+        # Check if the file names are empty
+        if input_file.filename == '' or output_file.filename == '':
+            return jsonify({'status': 'error', 'message': 'Invalid file names'})
+
+        # Check if the file extensions are allowed
+        if not allowed_file(input_file.filename) or not allowed_file(output_file.filename):
+            return jsonify({'status': 'error', 'message': 'Invalid file extension'})
+
+        # Save the files to the server
+        input_file_path = os.path.join(app.config['UPLOAD_FOLDER'], input_file.filename)
+        output_file_path = os.path.join(app.config['UPLOAD_FOLDER'], output_file.filename)
+
+        input_file.save(input_file_path)
+        output_file.save(output_file_path)
+        df = pd.read_csv(input_file_path)
+        deleted = ["ALPHABRODER", "BULLET LINE LLC", "CIC - ALPHARETTA", "D. PEYSER/M V SPORT", "DAVID PEYSER - ALABAMA", "ECOMPANYSTORE.COM", "ECOMPANYSTORE.COM-OFFICE", "HUETONE IMPRINTS,INC.", "LC MARKETING", "PRIME RESOURCES OUTBOUND"]
+
+        df_filtered = df.drop(df[df["Shipper Name"].isin(deleted)].index)
+        for index,row in df_filtered.iterrows():
+            row["Reference Number(s)"] = str(row["Reference Number(s)"])
+            row["Reference Number(s)"] = row["Reference Number(s)"].replace("PONUM","")
+            row["Reference Number(s)"] = row["Reference Number(s)"].replace("PO#","")
+            numbers = row["Reference Number(s)"].split("|")
+            row["Reference Number(s)"] = None
+            for j in numbers:
+                if j[0] == "4" and len(j) == 6:
+                    row["Reference Number(s)"] = j
+                    break
+        df_filtered.dropna(subset=["Reference Number(s)"], inplace=True)
+        with open(output_file_path, "w",newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["PONumber","DateShipped","TrackingNumber"])
+            for index,row in df_filtered.iterrows():
+                writer.writerow([row["Reference Number(s)"], row["Tracking Number"], row["Manifest Date"]])
+        file.close()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+if __name__ == '__main__':
+    app.run(debug=True)
