@@ -53,18 +53,23 @@ const App: React.FC = () => {
   return (
 <div>
       <h1>CSV Cleaner</h1>
+      <br />
+      <br />
       <div>
-        <label>Enter Upload Folder Path:</label>
+        <label>Enter Upload Folder Path: </label>
         <input type="text" value={uploadFolderPath} onChange={handleUploadFolderChange} />
       </div>
+      <br />
       <div>
-        <label>Input CSV file:</label>
+        <label>Input CSV file: </label>
         <input type="file" accept=".csv" onChange={handleInputChange} />
       </div>
+      <br />
       <div>
-        <label>Output CSV file:</label>
+        <label>Output CSV file: </label>
         <input type="file" accept=".csv" onChange={handleOutputChange} />
       </div>
+      <br />
       <button onClick={handleClean}>Clean CSV</button>
     </div>
   );
