@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  
 import pandas as pd
 from os import write
 import numpy as np
@@ -7,11 +8,27 @@ from scipy import stats
 import os
 
 app = Flask(__name__)
+CORS(app)
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = ''
 ALLOWED_EXTENSIONS = {'csv'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/set_upload_folder', methods=['POST'])
+def set_upload_folder():
+    global UPLOAD_FOLDER
+
+    try:
+        data = request.json
+        new_upload_folder = data.get('upload_folder')
+
+        UPLOAD_FOLDER = new_upload_folder
+        app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+        return jsonify({'status': 'success', 'message': f'Upload folder set to {UPLOAD_FOLDER}'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -19,6 +36,7 @@ def allowed_file(filename):
 @app.route('/clean', methods=['POST'])
 def clean_csv():
     try:
+        print(request.files)
         if 'input_file' not in request.files or 'output_file' not in request.files:
             return jsonify({'status': 'error', 'message': 'No file part'})
 
@@ -36,6 +54,12 @@ def clean_csv():
         # Save the files to the server
         input_file_path = os.path.join(app.config['UPLOAD_FOLDER'], input_file.filename)
         output_file_path = os.path.join(app.config['UPLOAD_FOLDER'], output_file.filename)
+
+        print(f"Input file path: {input_file_path}")
+        print(f"Output file path: {output_file_path}")
+
+        if not os.path.exists(input_file_path) or not os.path.exists(output_file_path):
+            return jsonify({'status': 'error', 'message': 'Input or output file does not exist'})
 
         input_file.save(input_file_path)
         output_file.save(output_file_path)
@@ -59,7 +83,6 @@ def clean_csv():
             writer.writerow(["PONumber","DateShipped","TrackingNumber"])
             for index,row in df_filtered.iterrows():
                 writer.writerow([row["Reference Number(s)"], row["Tracking Number"], row["Manifest Date"]])
-        file.close()
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
