@@ -82,7 +82,7 @@ def clean_csv():
             writer = csv.writer(file)
             writer.writerow(["PONumber","DateShipped","TrackingNumber"])
             for index,row in df_filtered.iterrows():
-                writer.writerow([row["Reference Number(s)"], row["Tracking Number"], row["Manifest Date"]])
+                writer.writerow([row["Reference Number(s)"], row["Manifest Date"], row["Tracking Number"]])
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
